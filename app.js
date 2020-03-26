@@ -2,6 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const _ = require("lodash");
+const mongoose = require("mongoose");
 
 const homeStartingContent = "Lorem ipsum dolor sit amet";
 const aboutContent = "Lorem ipsum dolor sit amet, consectetur laborum.";
@@ -14,13 +15,28 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
 
-let posts = [];
+mongoose.connect("mongodb+srv://admin-sanjiv:Sanjiv@mongodb@cluster0-o3ofi.mongodb.net/blogDB", { useNewUrlParser: true, useUnifiedTopology: true });
+
+const postsSchema = {
+  title: {
+    type: String,
+    required: true
+  },
+  content: {
+  type: String,
+  required: true
+}
+};
+
+const Post = mongoose.model("Post", postsSchema);
 
 app.get("/", function(req, res){
-  res.render("home", {
-      home: homeStartingContent,
-      posts: posts
-    });
+  Post.find({},function(err, posts){
+    res.render("home", {
+        home: homeStartingContent,
+        posts: posts
+      });
+  });
 });
 
 app.get("/about", function(req, res){
@@ -37,22 +53,24 @@ app.get("/compose", function(req, res){
 
 app.post("/compose", function(req, res){
 
-  const post = {
+  const post = new Post({
       title: req.body.postTitle,
       content: req.body.postBody
-    };
-
-  posts.push(post);
-  res.redirect("/");
+    });
+    post.save(function(err){
+      if(!err){
+        res.redirect("/");
+      }
+    });
 });
 
-app.get("/posts/:postName", function(req, res){
-  const requestedTitle = _.lowerCase(req.params.postName);
-  posts.forEach(function(post){
-      const storedTitle = _.lowerCase(post.title);
-      if (storedTitle == requestedTitle){
-        res.render("post", {title: post.title, body: post.content});
-      }
+app.get("/posts/:postId", function(req, res){
+  const requestedPostId = req.params.postId;
+  Post.findOne({_id: requestedPostId}, function(err, post){
+    res.render("post", {
+      title: post.title,
+      body: post.content
+    });
   });
 });
 
